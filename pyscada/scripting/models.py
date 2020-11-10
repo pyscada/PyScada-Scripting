@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-from os import getpid
-import traceback
 
 import logging
 logger = logging.getLogger(__name__)
@@ -38,7 +36,3 @@ class Script(models.Model):
 
     def __str__(self):
         return '%s: (%s)'%(self.label,self.script_file)
-
-
-
-
