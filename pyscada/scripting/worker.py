@@ -276,6 +276,10 @@ class ScriptingProcess(BaseProcess):
         # delete the background process entry
         BackgroundProcess.objects.filter(pk=self.process_id).delete()
 
+    def restart(self):
+        self.signal(self.SIGNALS[0])
+        return True
+
     def script(self):
         """
         to be overwritten by the script
@@ -379,4 +383,3 @@ class MasterProcess(BaseProcess):
                 logger.debug('%s, unhandled exception\n%s' % (self.label, traceback.format_exc()))
 
         return False
-

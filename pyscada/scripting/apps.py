@@ -10,3 +10,6 @@ class PyScadaScriptingConfig(AppConfig):
     name = 'pyscada.scripting'
     verbose_name = _("PyScada Scripting")
     path = os.path.dirname(os.path.realpath(__file__))
+
+    def ready(self):
+        import pyscada.scripting.signals
