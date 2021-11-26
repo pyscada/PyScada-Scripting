@@ -163,7 +163,7 @@ class ScriptingProcess(BaseProcess):
             # todo throw exception
             return False
         dwt = DeviceWriteTask(variable=variable, value=value, start=time_start, user=user)
-        dwt.save()
+        dwt.create_and_notificate(dwt)
         if blocking:
             timeout = max(time(), time_start) + timeout
             while timeout < time():
