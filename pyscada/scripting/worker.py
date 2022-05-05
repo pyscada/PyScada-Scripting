@@ -128,7 +128,10 @@ class ScriptingProcess(BaseProcess):
         )
         if current_value_only:
             for key, item in data.items():
-                data[key] = item[-1]
+                if len(item) > 0:
+                    data[key] = item[-1]
+                else:
+                    logger.debug('Variable (Current value only) %s has no value in time range [%s,%s]' %(key, time_from, time_to))
             return data
 
         for key, item in data.items():

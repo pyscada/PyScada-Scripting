@@ -3,10 +3,8 @@ from __future__ import unicode_literals
 
 import pyscada
 
-__version__ = '0.7.0rc18'
+__version__ = '0.7.1rc1'
 __author__ = 'Martin Schröder'
-
-default_app_config = 'pyscada.scripting.apps.PyScadaScriptingConfig'
 
 parent_process_list = [{'pk': 95,
                         'label': 'pyscada.scripting',

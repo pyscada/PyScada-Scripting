@@ -3,13 +3,11 @@ from __future__ import unicode_literals
 
 
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-@python_2_unicode_compatible
 class Script(models.Model):
     id = models.AutoField(primary_key=True)
     label = models.CharField(max_length=255,default='', blank=True)
