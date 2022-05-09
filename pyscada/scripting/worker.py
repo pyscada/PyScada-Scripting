@@ -28,7 +28,11 @@ try:
     def import_module_from_file(inst, file_name, func_name):
         spec = spec_from_file_location('pyscada.scripting.user_script', file_name)
         mod = module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        try:
+            spec.loader.exec_module(mod)
+        except FileNotFoundError:
+            logger.warning("Script file not found : " + str(spec.origin))
+            return None
         if not hasattr(mod, func_name):
             return None
         return MethodType(getattr(mod, func_name), inst)
@@ -124,7 +128,10 @@ class ScriptingProcess(BaseProcess):
         )
         if current_value_only:
             for key, item in data.items():
-                data[key] = item[-1]
+                if len(item) > 0:
+                    data[key] = item[-1]
+                else:
+                    logger.debug('Variable (Current value only) %s has no value in time range [%s,%s]' %(key, time_from, time_to))
             return data
 
         for key, item in data.items():
@@ -159,7 +166,7 @@ class ScriptingProcess(BaseProcess):
             # todo throw exception
             return False
         dwt = DeviceWriteTask(variable=variable, value=value, start=time_start, user=user)
-        dwt.save()
+        dwt.create_and_notificate(dwt)
         if blocking:
             timeout = max(time(), time_start) + timeout
             while timeout < time():
@@ -276,6 +283,10 @@ class ScriptingProcess(BaseProcess):
         # delete the background process entry
         BackgroundProcess.objects.filter(pk=self.process_id).delete()
 
+    def restart(self):
+        self.signal(self.SIGNALS[0])
+        return True
+
     def script(self):
         """
         to be overwritten by the script
@@ -307,6 +318,20 @@ class MasterProcess(BaseProcess):
         super(MasterProcess, self).__init__(dt=dt, **kwargs)
         self.SCRIPT_PROCESSES = []
 
+    def _add_process_to_list(self, script_process):
+        bp = BackgroundProcess(label='pyscada.scripting-%d' % script_process.pk,
+                               message='waiting..',
+                               enabled=True,
+                               parent_process_id=self.process_id,
+                               process_class='pyscada.scripting.worker.ScriptingProcess',
+                               process_class_kwargs=json.dumps({"script_id": script_process.pk,
+                                                                'script_file': script_process.script_file,
+                                                                'dt_set': script_process.interval}))
+        bp.save()
+        self.SCRIPT_PROCESSES.append({'id': bp.id,
+                                      'script_id': script_process.pk,
+                                      'failed': 0})
+
     def init_process(self):
         """
         for process in BackgroundProcess.objects.filter(parent_process__pk=self.process_id, done=False):
@@ -323,42 +348,61 @@ class MasterProcess(BaseProcess):
         BackgroundProcess.objects.filter(parent_process__pk=self.process_id, done=False).delete()
         """
         for script_process in Script.objects.filter(active=True):
-            bp = BackgroundProcess(label='pyscada.scripting.ScriptingProcess-%d' % script_process.pk,
-                                   message='waiting..',
-                                   enabled=True,
-                                   parent_process_id=self.process_id,
-                                   process_class='pyscada.scripting.worker.ScriptingProcess',
-                                   process_class_kwargs=json.dumps({"script_id": script_process.pk,
-                                                                    'script_file': script_process.script_file,
-                                                                    'dt_set': script_process.interval}))
-            bp.save()
-            self.SCRIPT_PROCESSES.append({'id': bp.id,
-                                          'script_id':script_process.pk,
-                                          'failed': 0})
+            self._add_process_to_list(script_process)
 
     def loop(self):
         """
 
         """
+        #logger.debug(self.SCRIPT_PROCESSES)
+        #logger.debug(Script.objects.filter(active=True))
+        # add new active scripts
+        for s in Script.objects.filter(active=True):
+            script_found = False
+            for script_process in self.SCRIPT_PROCESSES:
+                if s.pk == script_process['script_id']:
+                    script_found = True
+            if not script_found:
+                logger.info("%s not found - add script to %s" % (s.label, self.label))
+                self._add_process_to_list(s)
+
+        #logger.debug("script master loop")
+
         # check if all scripting processes are running
         for script_process in self.SCRIPT_PROCESSES:
             try:
-                BackgroundProcess.objects.get(pk=script_process['id'])
-            except BackgroundProcess.DoesNotExist or BackgroundProcess.MultipleObjectsReturned:
+                bp = BackgroundProcess.objects.get(pk=script_process['id'])
+                # stop deactivated script and remove from list
+                try:
+                    if not Script.objects.get(pk=script_process['script_id']).active:
+                        bp.stop(cleanup=True)
+                        logger.debug("stop %s" % bp)
+                        logger.debug("remove %s" % script_process)
+                        self.SCRIPT_PROCESSES.remove(script_process)
+                except Script.DoesNotExist:
+                    bp.stop(cleanup=True)
+                    logger.debug("stop %s" % bp)
+                    logger.debug("remove %s" % script_process)
+                    self.SCRIPT_PROCESSES.remove(script_process)
+            except (BackgroundProcess.DoesNotExist, BackgroundProcess.MultipleObjectsReturned):
                 # Process is dead, spawn new instance
                 if script_process['failed'] < 3:
-                    script = Script.objects.get(pk=script_process['script_id'])
-                    bp = BackgroundProcess(label='pyscada.scripting.ScriptingProcess-%d' % script.pk,
-                                           message='waiting..',
-                                           enabled=True,
-                                           parent_process_id=self.process_id,
-                                           process_class='pyscada.scripting.worker.ScriptingProcess',
-                                           process_class_kwargs=json.dumps({"script_id": script.pk,
-                                                                            'script_file': script.script_file,
-                                                                            'dt_set': script.interval}))
-                    bp.save()
-                    script_process['id'] = bp.id
-                    script_process['failed'] += 1
+                    try:
+                        script = Script.objects.get(pk=script_process['script_id'], active=True)
+                        bp = BackgroundProcess(label='pyscada.scripting-%d' % script.pk,
+                                               message='waiting..',
+                                               enabled=True,
+                                               parent_process_id=self.process_id,
+                                               process_class='pyscada.scripting.worker.ScriptingProcess',
+                                               process_class_kwargs=json.dumps({"script_id": script.pk,
+                                                                                'script_file': script.script_file,
+                                                                                'dt_set': script.interval}))
+                        bp.save()
+                        script_process['id'] = bp.id
+                        script_process['failed'] += 1
+                    except Script.DoesNotExist:
+                        logger.debug("removing %s from list" % script_process)
+                        self.SCRIPT_PROCESSES.remove(script_process)
                 else:
                     logger.error('process pyscada.scripting.user_script-%d failed more than 3 times' % script_process['script_id'])
             except:
@@ -379,4 +423,3 @@ class MasterProcess(BaseProcess):
                 logger.debug('%s, unhandled exception\n%s' % (self.label, traceback.format_exc()))
 
         return False
-
