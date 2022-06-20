@@ -7,6 +7,7 @@ from pyscada.scripting.models import Script
 from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_delete
 
+import signal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,6 @@ def _del_daq_daemons(sender, instance, **kwargs):
             bp = BackgroundProcess.objects.get(process_class_kwargs__contains=str('"script_id": ' + str(instance.id)))
         except:
             return False
-        bp.stop()
+        bp.stop(signum=signal.SIGKILL)
     else:
         logger.debug('post_save from %s' % type(instance))
