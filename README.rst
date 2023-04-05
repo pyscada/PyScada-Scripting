@@ -28,12 +28,12 @@ Installation
 Contribute
 ----------
 
- - Issue Tracker: https://github.com/trombastic/PyScada-Scripting/issues
- - Source Code: https://github.com/trombastic/PyScada-Scripting
+ - Issue Tracker: https://github.com/pyscada/PyScada-Scripting/issues
+ - Source Code: https://github.com/pyscada/PyScada-Scripting
  
 
 License
 -------
 
-The project is licensed under the _GNU General Public License v3 (GPLv3)_.
+The project is licensed under the _GNU AFFERO GENERAL PUBLIC LICENSE Version 3 (AGPLv3)_.
 -
