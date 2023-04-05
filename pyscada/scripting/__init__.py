@@ -9,6 +9,6 @@ __app_name__ = "Scripting"
 
 parent_process_list = [{'pk': 95,
                         'label': 'pyscada.' + __app_name__.lower(),
-                        'process_class': 'pyscada.' + __app_name__.lower() + '.worker.Process',
+                        'process_class': 'pyscada.' + __app_name__.lower() + '.worker.MasterProcess',
                         'process_class_kwargs': '{"dt_set":30}',
                         'enabled': True}]
