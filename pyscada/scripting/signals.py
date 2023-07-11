@@ -22,13 +22,15 @@ def _reinit_daq_daemons(sender, instance, **kwargs):
     logger.debug(instance)
     if type(instance) is Script:
         try:
-            #todo select only one script not all
-            bp = BackgroundProcess.objects.get(process_class_kwargs__contains=str('"script_id": ' + str(instance.id)))
+            # todo select only one script not all
+            bp = BackgroundProcess.objects.get(
+                process_class_kwargs__contains=str('"script_id": ' + str(instance.id))
+            )
         except:
             return False
         bp.restart()
     else:
-        logger.debug('post_save from %s' % type(instance))
+        logger.debug("post_save from %s" % type(instance))
 
 
 @receiver(pre_delete, sender=Script)
@@ -40,10 +42,12 @@ def _del_daq_daemons(sender, instance, **kwargs):
     logger.debug(instance)
     if type(instance) is Script:
         try:
-            #todo select only one script not all
-            bp = BackgroundProcess.objects.get(process_class_kwargs__contains=str('"script_id": ' + str(instance.id)))
+            # todo select only one script not all
+            bp = BackgroundProcess.objects.get(
+                process_class_kwargs__contains=str('"script_id": ' + str(instance.id))
+            )
         except:
             return False
         bp.stop(signum=signal.SIGKILL)
     else:
-        logger.debug('post_save from %s' % type(instance))
+        logger.debug("post_save from %s" % type(instance))

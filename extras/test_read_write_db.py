@@ -30,10 +30,15 @@ def script(self):
     :return:
     """
     self.counter += 1
-    data = self.read_values_from_db(variable_names=['counter'], current_value_only=True, time_from=time()-5, time_to=time())
-    if 'counter' in data:
-        logger.debug('a %d: %d'%(self.counter, data['counter'][-1]))
-    self.write_values_to_db(data={'counter': [self.counter]})  # assumes now() for time
-    #data = self.read_values_from_db(variable_names=['counter'], current_value_only=True,time_from=time()-60, time_to=time())
-    #if 'counter' in data:
+    data = self.read_values_from_db(
+        variable_names=["counter"],
+        current_value_only=True,
+        time_from=time() - 5,
+        time_to=time(),
+    )
+    if "counter" in data:
+        logger.debug("a %d: %d" % (self.counter, data["counter"][-1]))
+    self.write_values_to_db(data={"counter": [self.counter]})  # assumes now() for time
+    # data = self.read_values_from_db(variable_names=['counter'], current_value_only=True,time_from=time()-60, time_to=time())
+    # if 'counter' in data:
     #    logger.debug('b %d: %d'%(self.counter, data['counter']))

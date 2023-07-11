@@ -14,6 +14,4 @@ def script(self):
     :return:
     """
     # just print a debug message to the log
-    logger.debug('Scripting loop')
-
-
+    logger.debug("Scripting loop")
