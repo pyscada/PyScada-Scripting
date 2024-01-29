@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 from pyscada.models import (
     BackgroundProcess,
     Variable,
-    RecordedData,
     DeviceWriteTask,
     VariableProperty,
 )
@@ -103,23 +102,16 @@ class ScriptingProcess(BaseProcess):
         variable_names,
         time_from=None,
         time_to=None,
-        mean_value_period=0,
-        no_mean_value=True,
-        add_latest_value=True,
-        query_first_value=True,
         current_value_only=False,
-        blow_up=False,
+        query_first_value=False,
+        **kwargs
     ):
         """
         read data from the database
-        :param current_value_only:
         :param variable_names:
         :param time_from:
         :param time_to:
-        :param mean_value_period:
-        :param no_mean_value:
-        :param add_latest_value:
-        :param query_first_value:
+        :param current_value_only:
         :return: list of numpy arrays
         """
         if time_from is None:
@@ -134,26 +126,23 @@ class ScriptingProcess(BaseProcess):
             if variable.name not in self.variables:
                 self.variables[variable.name] = variable
         """
-        data = RecordedData.objects.get_values_in_time_range(
-            variable__in=variables,
+        data = Variable.objects.read_multiple(
+            variable_ids=variables.values_list("pk", flat=True),
             time_min=time_from,
             time_max=time_to,
             query_first_value=query_first_value,
-            key_is_variable_name=True,
-            blow_up=blow_up,
-            add_latest_value=add_latest_value,
-            mean_value_period=mean_value_period if mean_value_period != 0 else 5.0,
-            no_mean_value=True if mean_value_period != 0 else no_mean_value,
+            **kwargs
         )
         if current_value_only:
             for key, item in data.items():
-                if len(item) > 0:
-                    data[key] = item[-1]
-                else:
-                    logger.debug(
-                        "Variable (Current value only) %s has no value in time range [%s,%s]"
-                        % (key, time_from, time_to)
-                    )
+                if type(item) == list:
+                    if len(item) > 0:
+                        data[key] = item[-1]
+                    else:
+                        logger.debug(
+                            "Variable (Current value only) %s has no value in time range [%s,%s]"
+                            % (key, time_from, time_to)
+                        )
             return data
 
         for key, item in data.items():
@@ -228,12 +217,10 @@ class ScriptingProcess(BaseProcess):
             for i in range(len(items)):
                 if not variable:
                     continue
-                if variable.update_value(
-                    items[i], time() if timevalues is None else timevalues[i]
+                if variable.update_values(
+                    [items[i]], [time()] if timevalues is None else [timevalues[i]]
                 ):
-                    recorded_data_element = variable.create_recorded_data_element()
-                    if recorded_data_element is not None:
-                        self._tmpdata.append(recorded_data_element)
+                    self._tmpdata.append(variable)
 
     def write_variable_property(self, variable_name, property_name, value, **kwargs):
         """
